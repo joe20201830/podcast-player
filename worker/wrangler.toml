@@ -1,0 +1,8 @@
+name = "podcast-player"
+main = "src/index.js"
+compatibility_date = "2024-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "podcast-player"
+database_id = "4385692c-b85a-451c-97e4-9d9712c25e0e"

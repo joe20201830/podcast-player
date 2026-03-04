@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>// PODCAST_PLAYER</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    /* ── SAVED SHOWS ── */
+    #saved-section {
+      display: none;
+      margin-bottom: 36px;
+    }
+    .saved-label {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.7rem;
+      color: var(--dim);
+      letter-spacing: 0.08em;
+      margin-bottom: 12px;
+    }
+    .saved-label::before { content: "// "; color: var(--magenta); }
+    #saved-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .saved-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      background: rgba(9,13,26,0.85);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--cyan);
+      cursor: pointer;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+    }
+    .saved-item:hover {
+      border-color: var(--cyan);
+      box-shadow: 0 0 12px rgba(0,245,255,0.1);
+    }
+    .saved-item img {
+      width: 44px;
+      height: 44px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+    .saved-item-info { flex: 1; min-width: 0; }
+    .saved-item-name {
+      font-size: 0.9rem;
+      font-weight: 700;
+      color: #e8f4ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .saved-item-author {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.68rem;
+      color: var(--dim);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .saved-remove {
+      background: transparent;
+      color: var(--dim);
+      border: 1px solid var(--dim);
+      padding: 4px 10px;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.68rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      transition: color 0.2s, border-color 0.2s;
+      clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+    }
+    .saved-remove:hover { color: var(--magenta); border-color: var(--magenta); }
+
+    /* ── SAVE BUTTON ── */
+    #save-btn {
+      display: none;
+      margin-top: 12px;
+      background: transparent;
+      border: 1px solid var(--green);
+      color: var(--green);
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.75rem;
+      letter-spacing: 0.08em;
+      padding: 7px 18px;
+      cursor: pointer;
+      text-transform: uppercase;
+      transition: background 0.2s, box-shadow 0.2s;
+      clip-path: polygon(8px 0, 100% 0, calc(100% - 8px) 100%, 0 100%);
+    }
+    #save-btn:hover { background: rgba(0,255,136,0.1); box-shadow: 0 0 12px rgba(0,255,136,0.3); }
+    #save-btn.saved { color: var(--dim); border-color: var(--dim); }
+    #save-btn.saved:hover { color: var(--magenta); border-color: var(--magenta); background: transparent; box-shadow: none; }
+
+    :root {
+      --cyan:    #00f5ff;
+      --magenta: #ff00aa;
+      --yellow:  #f5e642;
+      --green:   #00ff88;
+      --bg:      #050810;
+      --bg2:     #090d1a;
+      --bg3:     #0d1225;
+      --border:  #0e2a3a;
+      --text:    #a8c8d8;
+      --dim:     #3a5060;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Rajdhani", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      background-image:
+        repeating-linear-gradient(
+          0deg, transparent, transparent 2px,
+          rgba(0,245,255,0.015) 2px, rgba(0,245,255,0.015) 4px
+        );
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,245,255,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,245,255,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── HEADER ── */
+    header {
+      position: relative;
+      z-index: 10;
+      background: rgba(9,13,26,0.95);
+      border-bottom: 1px solid var(--cyan);
+      box-shadow: 0 0 24px rgba(0,245,255,0.12), inset 0 -1px 0 rgba(0,245,255,0.3);
+      padding: 20px 32px 24px;
+      backdrop-filter: blur(8px);
+    }
+
+    header h1 {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 1.3rem;
+      color: var(--cyan);
+      text-shadow: 0 0 10px var(--cyan), 0 0 30px rgba(0,245,255,0.4);
+      letter-spacing: 0.08em;
+      cursor: default;
+    }
+    header h1::before { content: "// "; color: var(--magenta); text-shadow: 0 0 10px var(--magenta); }
+    header h1::after  { content: " _"; animation: blink 1s step-end infinite; }
+    header h1:hover   { animation: glitchTitle 0.3s steps(2) forwards; }
+
+    @keyframes blink { 50% { opacity: 0; } }
+    @keyframes glitchTitle {
+      0%   { text-shadow: 2px 0 var(--magenta), -2px 0 var(--cyan); }
+      33%  { text-shadow: -3px 0 var(--magenta), 3px 0 var(--cyan); }
+      66%  { text-shadow: 3px 0 var(--cyan), -3px 0 var(--magenta); }
+      100% { text-shadow: 0 0 10px var(--cyan), 0 0 30px rgba(0,245,255,0.4); }
+    }
+
+    /* ── SEARCH BAR ── */
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      position: relative;
+    }
+
+    .search-bar input {
+      flex: 1;
+      background: rgba(0,245,255,0.04);
+      border: 1px solid var(--cyan);
+      padding: 10px 14px;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.82rem;
+      color: var(--cyan);
+      outline: none;
+      transition: box-shadow 0.2s, background 0.2s;
+      clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%);
+    }
+    .search-bar input:focus {
+      box-shadow: 0 0 12px rgba(0,245,255,0.35);
+      background: rgba(0,245,255,0.07);
+    }
+    .search-bar input::placeholder { color: var(--dim); }
+
+    .search-bar button {
+      background: transparent;
+      color: var(--magenta);
+      border: 1px solid var(--magenta);
+      padding: 10px 22px;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.82rem;
+      letter-spacing: 0.1em;
+      cursor: pointer;
+      transition: background 0.2s, box-shadow 0.2s;
+      clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+      white-space: nowrap;
+      text-transform: uppercase;
+    }
+    .search-bar button:hover { background: rgba(255,0,170,0.15); box-shadow: 0 0 16px rgba(255,0,170,0.4); }
+    .search-bar button:disabled { color: var(--dim); border-color: var(--dim); box-shadow: none; cursor: not-allowed; }
+
+    #error {
+      margin-top: 10px;
+      color: var(--magenta);
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.8rem;
+      display: none;
+      text-shadow: 0 0 8px var(--magenta);
+    }
+    #error::before { content: "ERR > "; }
+
+    /* ── SEARCH RESULTS DROPDOWN ── */
+    #search-results {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: rgba(5,8,16,0.98);
+      border: 1px solid var(--cyan);
+      box-shadow: 0 8px 40px rgba(0,245,255,0.2);
+      z-index: 100;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+    #search-results::-webkit-scrollbar { width: 4px; }
+    #search-results::-webkit-scrollbar-track { background: var(--bg2); }
+    #search-results::-webkit-scrollbar-thumb { background: var(--cyan); }
+
+    .result-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(0,245,255,0.06);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .result-item:last-child { border-bottom: none; }
+    .result-item:hover { background: rgba(0,245,255,0.06); }
+
+    .result-item img {
+      width: 52px;
+      height: 52px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+      filter: saturate(1.1);
+    }
+
+    .result-info { flex: 1; min-width: 0; }
+    .result-name {
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #e8f4ff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .result-author {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.7rem;
+      color: var(--dim);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .result-add {
+      background: transparent;
+      color: var(--green);
+      border: 1px solid var(--green);
+      padding: 6px 14px;
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      cursor: pointer;
+      flex-shrink: 0;
+      text-transform: uppercase;
+      transition: background 0.2s, box-shadow 0.2s;
+      clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+    }
+    .result-add:hover {
+      background: rgba(0,255,136,0.12);
+      box-shadow: 0 0 12px rgba(0,255,136,0.3);
+    }
+
+    .results-label {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.7rem;
+      color: var(--dim);
+      padding: 8px 16px 6px;
+      border-bottom: 1px solid var(--border);
+      letter-spacing: 0.06em;
+    }
+
+    /* ── MAIN ── */
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 32px 20px;
+    }
+
+    #show-header {
+      display: none;
+      align-items: flex-start;
+      gap: 24px;
+      margin-bottom: 36px;
+      background: rgba(9,13,26,0.85);
+      border: 1px solid var(--cyan);
+      border-left: 4px solid var(--cyan);
+      padding: 24px;
+      box-shadow: 0 0 20px rgba(0,245,255,0.1), inset 0 0 40px rgba(0,245,255,0.03);
+      clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+    }
+
+    #show-header img {
+      width: 100px;
+      height: 100px;
+      object-fit: cover;
+      flex-shrink: 0;
+      border: 1px solid var(--cyan);
+      box-shadow: 0 0 14px rgba(0,245,255,0.3);
+      filter: saturate(1.2) contrast(1.05);
+    }
+
+    #show-header .show-info h2 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #fff;
+      text-shadow: 0 0 10px rgba(0,245,255,0.5);
+      margin-bottom: 6px;
+      letter-spacing: 0.03em;
+    }
+
+    #show-header .show-info p {
+      font-size: 0.85rem;
+      color: var(--text);
+      line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    #episodes-count {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.75rem;
+      color: var(--magenta);
+      text-shadow: 0 0 8px var(--magenta);
+      margin-top: 10px;
+    }
+    #episodes-count::before { content: "[ "; }
+    #episodes-count::after  { content: " ]"; }
+
+    /* ── EPISODES ── */
+    #episodes { display: flex; flex-direction: column; gap: 12px; }
+
+    .episode {
+      background: rgba(9,13,26,0.85);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--magenta);
+      padding: 18px 20px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+      clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+      position: relative;
+    }
+    .episode::after {
+      content: "";
+      position: absolute;
+      top: 0; right: 0;
+      border-top: 12px solid var(--border);
+      border-left: 12px solid transparent;
+    }
+    .episode:hover {
+      border-color: var(--cyan);
+      border-left-color: var(--cyan);
+      box-shadow: 0 0 16px rgba(0,245,255,0.1), inset 0 0 30px rgba(0,245,255,0.03);
+    }
+    .episode:hover::after { border-top-color: var(--cyan); }
+
+    .episode-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .episode-date {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.7rem;
+      color: var(--dim);
+    }
+    .episode-duration {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.7rem;
+      color: var(--yellow);
+      text-shadow: 0 0 6px rgba(245,230,66,0.5);
+    }
+
+    /* ── EPISODE TITLE GLITCH ── */
+    .episode h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #e8f4ff;
+      margin-bottom: 8px;
+      line-height: 1.4;
+      letter-spacing: 0.02em;
+      position: relative;
+      display: inline-block;
+    }
+    .episode:hover h3 {
+      animation: glitchTitle 0.25s steps(2);
+      color: #fff;
+      text-shadow: 0 0 8px rgba(0,245,255,0.6);
+    }
+    .episode h3::before,
+    .episode h3::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      overflow: hidden;
+      opacity: 0;
+    }
+    .episode:hover h3::before {
+      animation: glitchTop 0.25s steps(2);
+      color: var(--cyan);
+      clip-path: inset(0 0 60% 0);
+      transform: translateX(-2px);
+      opacity: 1;
+    }
+    .episode:hover h3::after {
+      animation: glitchBottom 0.25s steps(2);
+      color: var(--magenta);
+      clip-path: inset(60% 0 0 0);
+      transform: translateX(2px);
+      opacity: 1;
+    }
+
+    @keyframes glitchTop {
+      0%   { transform: translateX(-2px); clip-path: inset(0 0 60% 0); }
+      33%  { transform: translateX(3px);  clip-path: inset(10% 0 50% 0); }
+      66%  { transform: translateX(-1px); clip-path: inset(5% 0 65% 0); }
+      100% { transform: translateX(0);    clip-path: inset(0 0 60% 0); }
+    }
+    @keyframes glitchBottom {
+      0%   { transform: translateX(2px);  clip-path: inset(60% 0 0 0); }
+      33%  { transform: translateX(-3px); clip-path: inset(50% 0 10% 0); }
+      66%  { transform: translateX(1px);  clip-path: inset(65% 0 5% 0); }
+      100% { transform: translateX(0);    clip-path: inset(60% 0 0 0); }
+    }
+
+    .episode-desc {
+      font-size: 0.82rem;
+      color: var(--text);
+      line-height: 1.6;
+      margin-bottom: 14px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      opacity: 0.8;
+    }
+    .episode-desc.expanded { display: block; -webkit-line-clamp: unset; }
+
+    .show-more {
+      background: none;
+      border: none;
+      color: var(--cyan);
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.72rem;
+      cursor: pointer;
+      padding: 0;
+      margin-bottom: 14px;
+      display: block;
+      text-shadow: 0 0 6px var(--cyan);
+      letter-spacing: 0.05em;
+    }
+    .show-more:hover { color: #fff; }
+
+    audio {
+      width: 100%;
+      height: 36px;
+      accent-color: var(--cyan);
+      filter: hue-rotate(160deg) saturate(2);
+    }
+
+    /* ── PLACEHOLDER / SPINNER ── */
+    #placeholder {
+      text-align: center;
+      padding: 80px 20px;
+      color: var(--dim);
+    }
+    #placeholder svg {
+      width: 56px; height: 56px;
+      margin-bottom: 16px;
+      opacity: 0.25;
+      stroke: var(--cyan);
+    }
+    #placeholder p {
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.85rem;
+      letter-spacing: 0.05em;
+    }
+    #placeholder p::before { content: "> "; color: var(--magenta); }
+    #placeholder p + p { margin-top: 8px; font-size: 0.7rem; opacity: 0.4; }
+
+    .spinner {
+      display: none;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--cyan);
+      font-family: "Share Tech Mono", monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.1em;
+      text-shadow: 0 0 8px var(--cyan);
+    }
+    .spinner::before {
+      content: "";
+      display: block;
+      width: 36px; height: 36px;
+      border: 2px solid var(--border);
+      border-top-color: var(--cyan);
+      border-right-color: var(--magenta);
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin 0.6s linear infinite;
+      box-shadow: 0 0 10px rgba(0,245,255,0.3);
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>PODCAST_PLAYER</h1>
+  <div class="search-bar">
+    <input id="search-input" type="text" placeholder="search: podcast show name..." autocomplete="off" />
+    <button id="search-btn" onclick="searchPodcasts()">SCAN</button>
+    <div id="search-results"></div>
+  </div>
+  <div id="error"></div>
+</header>
+
+<main>
+  <div id="saved-section">
+    <div class="saved-label">SAVED SHOWS</div>
+    <div id="saved-list"></div>
+  </div>
+
+  <div id="show-header">
+    <img id="show-art" src="" alt="Podcast art" onerror="this.style.display='none'" />
+    <div class="show-info">
+      <h2 id="show-title"></h2>
+      <p id="show-desc"></p>
+      <div id="episodes-count"></div>
+      <button id="save-btn" onclick="toggleSave()"></button>
+    </div>
+  </div>
+
+  <div class="spinner" id="spinner">ACCESSING_FEED...</div>
+
+  <div id="placeholder">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M12 18.5a6.5 6.5 0 1 0 0-13 6.5 6.5 0 0 0 0 13Z"/>
+      <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z"/>
+      <path d="M12 12v.01"/>
+    </svg>
+    <p>Search for a podcast show to get started</p>
+    <p>AWAITING INPUT...</p>
+  </div>
+
+  <div id="episodes"></div>
+</main>
+
+<script>
+  // ── CONFIG ─────────────────────────────────────────────────
+  // Replace with your deployed Worker URL after running `wrangler deploy`
+  const WORKER_URL = "https://podcast-player.joe96207.workers.dev";
+  const PROXY = WORKER_URL + "/proxy?url=";
+  const SHOWS_API = WORKER_URL + "/shows";
+
+  // ── DEVICE ID ──────────────────────────────────────────────
+  function getDeviceId() {
+    let id = localStorage.getItem("device_id");
+    if (!id) {
+      id = crypto.randomUUID();
+      localStorage.setItem("device_id", id);
+    }
+    return id;
+  }
+  const DEVICE_ID = getDeviceId();
+
+  // ── CURRENT FEED STATE ────────────────────────────────────
+  let currentFeed = null; // { feedUrl, name, author, artworkUrl }
+
+  /* ── SEARCH ── */
+  async function searchPodcasts() {
+    const query = document.getElementById("search-input").value.trim();
+    if (!query) return;
+
+    const btn = document.getElementById("search-btn");
+    btn.disabled = true;
+    btn.textContent = "SCANNING...";
+    hideError();
+
+    try {
+      const res = await fetch(
+        `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&media=podcast&limit=8&entity=podcast`
+      );
+      if (!res.ok) throw new Error();
+      const data = await res.json();
+      renderSearchResults(data.results || []);
+    } catch {
+      showError("Search failed. Check connection.");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "SCAN";
+    }
+  }
+
+  function renderSearchResults(results) {
+    const panel = document.getElementById("search-results");
+    panel.innerHTML = "";
+
+    if (results.length === 0) {
+      panel.innerHTML = `<div class="results-label">NO MATCHES FOUND</div>`;
+      panel.style.display = "block";
+      return;
+    }
+
+    panel.innerHTML = `<div class="results-label">FOUND ${results.length} SIGNAL${results.length !== 1 ? "S" : ""} — SELECT TO JACK IN</div>`;
+
+    results.forEach(pod => {
+      const item = document.createElement("div");
+      item.className = "result-item";
+      item.innerHTML = `
+        <img src="${escHtml(pod.artworkUrl100 || "")}" alt="" onerror="this.style.display='none'" />
+        <div class="result-info">
+          <div class="result-name">${escHtml(pod.collectionName || "Unknown")}</div>
+          <div class="result-author">${escHtml(pod.artistName || "")}</div>
+        </div>
+        <button class="result-add">ADD</button>
+      `;
+      item.querySelector(".result-add").addEventListener("click", (e) => {
+        e.stopPropagation();
+        closeSearchResults();
+        if (pod.feedUrl) {
+          loadFeed(pod.feedUrl);
+        } else {
+          showError("No RSS feed URL found for this podcast.");
+        }
+      });
+      panel.appendChild(item);
+    });
+
+    panel.style.display = "block";
+  }
+
+  function closeSearchResults() {
+    const panel = document.getElementById("search-results");
+    panel.style.display = "none";
+    panel.innerHTML = "";
+  }
+
+  // Close results when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest(".search-bar")) closeSearchResults();
+  });
+
+  document.getElementById("search-input").addEventListener("keydown", e => {
+    if (e.key === "Enter") searchPodcasts();
+    if (e.key === "Escape") closeSearchResults();
+  });
+
+  /* ── LOAD FEED ── */
+  async function loadFeed(feedUrl) {
+    hideError();
+    setLoading(true);
+    clearResults();
+    currentFeed = null;
+
+    try {
+      const res = await fetch(PROXY + encodeURIComponent(feedUrl));
+      if (!res.ok) throw new Error("Network error");
+      const rawText = await res.text();
+      const xml = new DOMParser().parseFromString(rawText, "text/xml");
+      renderFeed(xml, feedUrl);
+    } catch {
+      showError("Could not load feed. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /* ── RENDER FEED ── */
+  function renderFeed(xml, feedUrl) {
+    const channel = xml.querySelector("channel");
+    if (!channel) { showError("Invalid RSS feed."); return; }
+
+    const title = xmlText(channel, "title");
+    const desc  = xmlText(channel, "description");
+    const art   =
+      channel.querySelector("image url")?.textContent?.trim() ||
+      xmlAttr(channel, "image", "href") ||
+      "";
+    const author = xmlText(channel, "author") || xmlText(channel, "managingEditor") || "";
+
+    currentFeed = { feedUrl, name: title, author, artworkUrl: art };
+
+    document.getElementById("show-title").textContent = title;
+    document.getElementById("show-desc").textContent = stripHtml(desc);
+    document.getElementById("show-art").src = art;
+    document.getElementById("show-header").style.display = "flex";
+    updateSaveButton();
+
+    const items = [...xml.querySelectorAll("item")];
+    document.getElementById("episodes-count").textContent =
+      `${items.length} episode${items.length !== 1 ? "s" : ""}`;
+
+    const container = document.getElementById("episodes");
+    document.getElementById("placeholder").style.display = "none";
+
+    if (items.length === 0) {
+      container.innerHTML = `<p style="color:var(--dim);text-align:center;font-family:'Share Tech Mono',monospace;font-size:0.8rem;">NO EPISODES FOUND</p>`;
+      return;
+    }
+
+    items.forEach((item, i) => {
+      const epTitle = xmlText(item, "title");
+      const epDesc  = stripHtml(
+        xmlText(item, "description") ||
+        xmlText(item, "summary") ||
+        xmlText(item, "encoded") ||
+        ""
+      );
+      const pubDate  = xmlText(item, "pubDate");
+      const duration = xmlText(item, "duration");
+      const enclosure = item.querySelector("enclosure");
+      const audioUrl  = enclosure?.getAttribute("url") || "";
+
+      const formattedDate = pubDate
+        ? new Date(pubDate).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+        : "";
+
+      const el = document.createElement("div");
+      el.className = "episode";
+      el.innerHTML = `
+        <div class="episode-meta">
+          <span class="episode-date">${formattedDate}</span>
+          ${duration ? `<span class="episode-duration">${formatDuration(duration)}</span>` : ""}
+        </div>
+        <h3 data-text="${escHtml(epTitle)}">${escHtml(epTitle)}</h3>
+        ${epDesc ? `
+          <p class="episode-desc" id="desc-${i}">${escHtml(epDesc)}</p>
+          ${epDesc.length > 200 ? `<button class="show-more" onclick="toggleDesc(${i}, this)">[ show more ]</button>` : ""}
+        ` : ""}
+        ${audioUrl
+          ? `<audio controls preload="none" src="${escHtml(audioUrl)}"></audio>`
+          : `<p style="font-family:'Share Tech Mono',monospace;font-size:0.72rem;color:var(--dim)">// NO_AUDIO_SIGNAL</p>`
+        }
+      `;
+      container.appendChild(el);
+    });
+  }
+
+  function toggleDesc(i, btn) {
+    const el = document.getElementById(`desc-${i}`);
+    el.classList.toggle("expanded");
+    btn.textContent = el.classList.contains("expanded") ? "[ show less ]" : "[ show more ]";
+  }
+
+  /* ── SAVED SHOWS ── */
+  let savedShows = []; // cache: array of { feed_url, name, author, artwork_url }
+
+  async function loadSavedShows() {
+    try {
+      const res = await fetch(`${SHOWS_API}?device_id=${encodeURIComponent(DEVICE_ID)}`);
+      if (!res.ok) return;
+      savedShows = await res.json();
+    } catch {
+      savedShows = [];
+    }
+    renderSavedShows();
+  }
+
+  function renderSavedShows() {
+    const section = document.getElementById("saved-section");
+    const list = document.getElementById("saved-list");
+
+    if (savedShows.length === 0) {
+      section.style.display = "none";
+      return;
+    }
+
+    section.style.display = "block";
+    list.innerHTML = "";
+    savedShows.forEach(show => {
+      const item = document.createElement("div");
+      item.className = "saved-item";
+      item.innerHTML = `
+        <img src="${escHtml(show.artwork_url || "")}" alt="" onerror="this.style.display='none'" />
+        <div class="saved-item-info">
+          <div class="saved-item-name">${escHtml(show.name || "Unknown")}</div>
+          <div class="saved-item-author">${escHtml(show.author || "")}</div>
+        </div>
+        <button class="saved-remove" title="Remove">✕</button>
+      `;
+      item.querySelector(".saved-item-info").addEventListener("click", () => loadFeed(show.feed_url));
+      item.querySelector(".saved-remove").addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeShow(show.feed_url);
+      });
+      list.appendChild(item);
+    });
+
+    updateSaveButton();
+  }
+
+  function isCurrentSaved() {
+    return currentFeed && savedShows.some(s => s.feed_url === currentFeed.feedUrl);
+  }
+
+  function updateSaveButton() {
+    const btn = document.getElementById("save-btn");
+    if (!currentFeed) { btn.style.display = "none"; return; }
+    btn.style.display = "inline-block";
+    if (isCurrentSaved()) {
+      btn.textContent = "SAVED ✓ — REMOVE";
+      btn.classList.add("saved");
+    } else {
+      btn.textContent = "+ SAVE SHOW";
+      btn.classList.remove("saved");
+    }
+  }
+
+  async function toggleSave() {
+    if (!currentFeed) return;
+    if (isCurrentSaved()) {
+      await removeShow(currentFeed.feedUrl);
+    } else {
+      await saveShow();
+    }
+  }
+
+  async function saveShow() {
+    if (!currentFeed) return;
+    try {
+      await fetch(SHOWS_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          device_id: DEVICE_ID,
+          feed_url: currentFeed.feedUrl,
+          name: currentFeed.name,
+          author: currentFeed.author,
+          artwork_url: currentFeed.artworkUrl,
+        }),
+      });
+      savedShows.unshift({
+        feed_url: currentFeed.feedUrl,
+        name: currentFeed.name,
+        author: currentFeed.author,
+        artwork_url: currentFeed.artworkUrl,
+      });
+      renderSavedShows();
+    } catch {
+      showError("Could not save show.");
+    }
+  }
+
+  async function removeShow(feedUrl) {
+    try {
+      await fetch(SHOWS_API, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ device_id: DEVICE_ID, feed_url: feedUrl }),
+      });
+      savedShows = savedShows.filter(s => s.feed_url !== feedUrl);
+      renderSavedShows();
+    } catch {
+      showError("Could not remove show.");
+    }
+  }
+
+  // Load saved shows on startup
+  loadSavedShows();
+
+  /* ── XML HELPERS ── */
+  function xmlText(el, tag) {
+    const direct = el.querySelector(tag);
+    if (direct) return direct.textContent?.trim() || "";
+    const localTag = tag.includes(":") ? tag.split(":")[1] : tag;
+    for (const node of el.getElementsByTagName("*")) {
+      if (node.localName === localTag) return node.textContent?.trim() || "";
+    }
+    return "";
+  }
+
+  function xmlAttr(el, tag, attrName) {
+    const localTag = tag.includes(":") ? tag.split(":")[1] : tag;
+    for (const node of el.getElementsByTagName("*")) {
+      if (node.localName === localTag) {
+        const val = node.getAttribute(attrName);
+        if (val) return val;
+      }
+    }
+    return "";
+  }
+
+  /* ── UTILS ── */
+  function stripHtml(html) {
+    const tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
+  }
+
+  function escHtml(s) {
+    return String(s)
+      .replace(/&/g,"&amp;").replace(/</g,"&lt;")
+      .replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  function formatDuration(d) {
+    if (/^\d+$/.test(d)) {
+      const s = parseInt(d), h = Math.floor(s/3600), m = Math.floor((s%3600)/60), sec = s%60;
+      return h > 0
+        ? `${h}:${String(m).padStart(2,"0")}:${String(sec).padStart(2,"0")}`
+        : `${m}:${String(sec).padStart(2,"0")}`;
+    }
+    return d;
+  }
+
+  function showError(msg) {
+    const el = document.getElementById("error");
+    el.textContent = msg;
+    el.style.display = "block";
+  }
+
+  function hideError() {
+    document.getElementById("error").style.display = "none";
+  }
+
+  function setLoading(on) {
+    document.getElementById("spinner").style.display = on ? "block" : "none";
+  }
+
+  function clearResults() {
+    document.getElementById("episodes").innerHTML = "";
+    document.getElementById("show-header").style.display = "none";
+    document.getElementById("placeholder").style.display = "none";
+  }
+</script>
+</body>
+</html>
